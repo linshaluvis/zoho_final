@@ -1,0 +1,352 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+<link href='https://unpkg.com/css.gg@2.0.0/icons/css/trash.css' rel='stylesheet'>
+<script src="https://cdn.jsdelivr.net/bootstrap.datetimepicker/4.17.37/js/bootstrap-datetimepicker.min.js"></script>
+<script src="https://unpkg.com/@popperjs/core@2/dist/umd/popper.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.9/xlsx.full.min.js"></script>
+
+<style>
+    .card{
+        background: none;
+    }
+    tbody tr td{
+        border: none;
+        border-top: none;
+        border-style: none;
+        color:azure;
+        justify-content: center;
+    }
+    tbody tr:hover{
+        cursor: pointer;
+        background-color: rgba(0, 0, 0, 0.1);
+    }
+
+    thead tr th{
+        border-right: 2px solid transparent;
+    }
+   
+    ul.image-bullets {
+        list-style-type: none;
+        padding-left: 30px;
+    }
+
+    ul.image-bullets li:before {
+        content: "";
+        background-image: url('static/images/bullet.png');
+        background-size: 15px 15px;
+        display: inline-block;
+        width: 15px;
+        height: 15px;
+        margin-right: 5px; 
+        margin-left: 26%;
+    }
+    .recurpoints ul li{
+        margin-bottom: 10px;
+    }
+
+    .btn:hover{
+        color: black;
+        font-weight: bold;
+    }
+
+    a{
+        list-style: none;
+        color: azure;
+    }
+     a:hover{
+        color: rgb(218, 164, 48);
+     }
+     ::-webkit-scrollbar {
+        width: 5px; 
+    }
+
+    ::-webkit-scrollbar-track {
+        background: #f1f1f1; 
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: #888; 
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: #555; 
+    }
+
+    .btn-outline-warning:hover {
+        color: black !important;
+    }
+
+    .dropdown-item:hover{
+        cursor: pointer;
+    }
+</style>
+
+<div class="body-wrapper">
+    <div class="container-fluid">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+              <li class="breadcrumb-item"><a href="{% url 'company_dashboard' %}" class="text-warning-emphasis">Dashboard</a></li>
+              <li class="breadcrumb-item"><a class="text-warning-emphasis">Sales</a></li>
+              <li class="breadcrumb-item" aria-current="page">All Recurring Invoice</li>
+            </ol>
+        </nav>
+        <div class="row mt-5">
+            <div class="col-md-12">
+                <div class="card mb-5 p-5" style="background-color: black; border-radius: 1vh;">
+                    <h1 style="color: white; font-weight: bolder;">Recurring Invoices</h1><br>
+                    {% for message in messages %}
+                    <h5>
+                      <div class="alert alert-danger message text-center" style="color: black;" id="alert_danger">
+                        {{ message }}
+                        <a type="button" id="alert_close" class="close" data-dismiss="alert" aria-label="Close" style="float: right;">
+                            <span aria-hidden="true" style="font-size: large; color: #68020F;">&times;</span>
+                        </a>
+                      </div>
+                    </h5>
+                    {% endfor %}
+                    <div class="row">
+                        <div class="col-md-4 d-flex justify-content-end align-items-start gap-2">
+                            <input class="form-control text-dark bg-light" type="text" id="search" placeholder="Search..." style="border: 2px solid #ffae1f;">
+                            <a class="btn text-center btn-outline-warning" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"
+                            role="button" style="color: #ffae1f; width: 25%;">
+                            <i class="fa fa-sort mt-1 " style="font-size: small;"></i>
+                            </a>
+                            <div class="dropdown-menu ">
+                                <a class="dropdown-item text-black" onclick="sortTable(0)" >All</a>
+                                <a class="dropdown-item text-black" onclick="sortTable(3)">Customer Name</a>
+                                <a class="dropdown-item text-black" onclick="sortTable(2)">Rec. Invoice Number</a>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3"></div>
+                        <div class="col-md-5 d-flex justify-content-end align-items-start gap-1">
+                            <a class="btn text-center btn-outline-warning" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"
+                            role="button" style="color: #ffae1f; width: 22%;">
+                            <i class="fa fa-filter mt-1" style="font-size: small;"></i>
+                            </a>
+                            <div class="dropdown-menu">
+                                <a class="dropdown-item text-black" onclick="filterTable(6,'all')">All</a>
+                                <a class="dropdown-item text-black" onclick="filterTable(6,'draft')">Draft</a>
+                                <a class="dropdown-item text-black" onclick="filterTable(6,'saved')">Saved</a>
+                            </div>
+                            <a style="border: 1px solid; border-radius: 5px; height: 2.4rem; display: flex; align-items: center;" data-bs-toggle="modal" href="#importModal" class="btn btn-outline-warning">
+                                <i class="fa fa-file-excel p-1" style="font-size: large;"></i>
+                                <span style="font-size: 2vh; margin-left: 0.5rem;" class="text-center">Import</span>
+                            </a>
+                            <a style="border: 1px solid; border-radius: 5px; height: 2.4rem; display: flex; align-items: center;" onclick="exportToExcel()" class="btn btn-outline-warning" >
+                              <i class="fa fa-file-excel p-1" style="font-size: large;"></i>
+                              <span style="font-size: 2vh; margin-left: 0.5rem;" class="text-center">Export</span>
+                            </a>
+                            <a href="{% url 'addRecurringInvoice' %}" class="btn text-center btn-outline-warning" role="button" style="color: #ffae1f; width: 30%;">
+                                NEW &nbsp; <i class="fa fa-plus mt-1"></i>
+                            </a> 
+                        </div>
+    
+                    </div>
+                    <div class="container-fluid">
+                        <br>
+                        <table class="table table-responsive-md mt-4" id="recurring_inv_table">
+                            <thead>
+                                <tr class="text-center text-white">
+                                    <th>#</th>
+                                    <th>Date</th>
+                                    <th>Rec. Invoice No.</th>
+                                    <th>Name</th>
+                                    <th>Mail ID</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Balance</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for a in invoices %}
+                                <tr class='clickable-row text-center' onclick="window.location.href=`{% url 'viewRecurringInvoice' a.id %}`">
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>{{ a.start_date }}</td>
+                                    <td>{{ a.rec_invoice_no }}</td>
+                                    <td>{{ a.customer.first_name }} {{ a.customer.last_name }}</td>
+                                    <td>{{ a.customer_email}}</td>
+                                    <td>{{ a.grandtotal }}</td>
+                                    <td>{{ a.status }}</td>
+                                    <td>{{ a.balance }}</td>
+                                </tr>
+                                {%endfor%}  
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div> 
+
+<!-- Import Estimate modal -->
+<div class="modal fade" id="importModal">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content" style="background-color: #3b3b3b;">
+            <div class="modal-header">
+                <h3 class="modal-title text-light" id="exampleModalLabel">Import Recurring Invoice</h3>
+                <button type="button" class="btn close text-white" data-bs-dismiss="modal" aria-label="Close">
+                  <span aria-hidden="true" style="font-size: x-large;">&times;</span>
+                </button>
+              </div>
+            <div class="modal-body mx-3 rounded-1" style="background-color: #000;">
+                <div class="file_instructions">
+                    <div class="alert alert-danger" role="alert">
+                        <span class="fw-bolder">IMPORTANT:</span>
+                        <p>File should have 2 sheets named 'recurring_invoice' & 'items' and column name & order should be in the given formate(Uppercase).</p>
+                        <p class="fw-bolder">Recurring Invoice sheet - SLNO*, CUSTOMER*, DATE*, PLACE OF SUPPLY*, PROFILE NAME, ENTRY TYPE, RI NO*, TERMS*, REPEAT EVERY*, PRICE LIST, DESCRIPTION, SUB TOTAL*, IGST*, CGST*, SGST*, TAX AMOUNT*, ADJUSTMENT, SHIPPING CHARGE, GRAND TOTAL*, ADVANCE </p>
+                        <p class="fw-bolder">Items sheet - RI NO**, PRODUCT*, HSN*, QUANTITY*, PRICE*, TAX PERCENTAGE*, DISCOUNT, TOTAL* </p>
+                        <p>* All required columns should be filled.</p>
+                        <p>** <b>RI NO</b> is <b>SLNO</b> of recurring_invoice</p>
+                        <p>Place of supply should be in the give format with state code('Ex: [KL]-Kerala') or '[OT]-Other Territory'.</p>
+                        <p>Date format should be 'YYYY-MM-DD' or 'DD-MM-YYYY'.</p>
+                    </div>
+                </div>
+                <div class="sample_file mb-2">
+                    <a href="{% url 'downloadRecurringInvoiceSampleImportFile' %}" class="fw-bolder btn btn-outline-warning btn-sm">Download Sample File</a>
+                </div>
+                <form id="importEstimateForm" action="{% url 'importRecurringInvoiceFromExcel' %}" method="POST" class="form" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="excel_file" class="form-label text-white">File</label>
+                        <input id="excel_file" class="form-control" type="file" name="excel_file" required>
+                    </div>
+                    <div class="d-flex justify-content-center mt-4">
+                        <input id="submit_import_excel" value="IMPORT" class="btn btn-outline-warning" type="submit">
+                    </div>
+                    
+                </form>
+            </div>
+            <div class="modal-footer"></div>
+        </div>
+    </div>
+</div>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+
+<script>
+    $('#alert_close').click(function(){
+      $('#alert_danger').hide()
+    })
+
+    $(document).ready(function() {
+        var $rows = $('#recurring_inv_table tbody tr');
+        $('#search').keyup(function() {
+            var val = $.trim($(this).val()).replace(/ +/g, ' ').toLowerCase();
+            $rows.show().filter(function() {
+                var text = $(this).text().replace(/\s+/g, ' ').toLowerCase();
+                return !~text.indexOf(val);
+            }).hide();
+        });
+    });
+
+    $('.dropdown-toggle').dropdown();
+
+    jQuery(document).ready(function($) {
+        $(".clickable-row").click(function() {
+        window.location = $(this).data("href");
+        });
+    });
+
+    function sorttable(col) {
+        var table, rows, switching, i, x, y, shouldSwitch;
+        table = document.getElementById("recurring_inv_table");
+        switching = true;
+        
+        while (switching) {
+            switching = false;
+            rows = table.rows;
+
+            for (i = 1; i < (rows.length - 1); i++) {
+                shouldSwitch = false;
+
+                x = rows[i].getElementsByTagName("td")[col].textContent.toLowerCase();
+                y = rows[i + 1].getElementsByTagName("td")[col].textContent.toLowerCase();
+
+                if (x > y) {
+                    shouldSwitch = true;
+                    break;
+                }
+            }
+
+            if (shouldSwitch) {
+                rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+                switching = true;
+            }
+        }
+    }
+
+    function filtertable(key) {
+        var input, filter, table, tr, td, i, txtValue;
+        table = document.getElementById("recurring_inv_table");
+        tr = table.getElementsByTagName("tr");
+
+        for (i = 0; i < tr.length; i++) {
+            td = tr[i].getElementsByTagName("td")[7];
+            if (td) {
+                txtValue = td.textContent || td.innerText;
+                if (txtValue.toUpperCase() == key.toUpperCase()) {
+                    tr[i].style.display = "";
+                } else {
+                    tr[i].style.display = "none";
+                }
+            }
+        }
+    }
+
+    function exportToExcel() {
+        var table = document.querySelector('#recurring_inv_table');
+        var ws = XLSX.utils.table_to_sheet(table);
+        var wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+        XLSX.writeFile(wb, 'Recurring_invoice.xlsx');
+    }
+
+    function sortTable(columnIndex) {
+    var table, rows, switching, i, x, y, shouldSwitch;
+    table = document.getElementById("recurring_inv_table");
+    switching = true;
+
+    while (switching) {
+      switching = false;
+      rows = table.rows;
+
+      for (i = 1; i < (rows.length - 1); i++) {
+        shouldSwitch = false;
+        x = rows[i].getElementsByTagName("td")[columnIndex].textContent.toLowerCase();
+        y = rows[i + 1].getElementsByTagName("td")[columnIndex].textContent.toLowerCase();
+
+        if (x > y) {
+            shouldSwitch = true;
+            break;
+        }
+      }
+
+      if (shouldSwitch) {
+        rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+        switching = true;
+      }
+    }
+  }
+
+  function filterTable(row,filterValue) {
+    var table = document.getElementById("recurring_inv_table");
+    var rows = table.getElementsByTagName("tr");
+
+    for (var i = 1; i < rows.length; i++) {
+      var statusCell = rows[i].getElementsByTagName("td")[row];
+
+      if (filterValue == "all" || statusCell.textContent.toLowerCase() == filterValue) {
+        rows[i].style.display = "";
+      } else {
+        rows[i].style.display = "none";
+      }
+    }
+  }
+</script>
+
+{%endblock%}
