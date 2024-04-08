@@ -19995,7 +19995,7 @@ def shareRecurringInvoiceToEmail(request,id):
                 # print(emails_list)
             
                 context = {'recInvoice':inv, 'recInvItems':itms,'cmp':com}
-                template_path = 'zohomodules/recurring_invoice/recurring_invoice_pdf.html'
+                template_path = 'zohomodules/debitnote/debitnote_pdf.html'
                 template = get_template(template_path)
 
                 html  = template.render(context)
@@ -20332,7 +20332,7 @@ def debitnote_list(request):
             cmp = StaffDetails.objects.get(login_details = log_details).company
             dash_details = StaffDetails.objects.get(login_details=log_details)
 
-        rec = RecurringInvoice.objects.filter(company = cmp)
+        rec = debitnote.objects.filter(company = cmp)
         allmodules= ZohoModules.objects.get(company = cmp)
         context = {
             'invoices': rec, 'allmodules':allmodules, 'details':dash_details
@@ -20619,14 +20619,18 @@ def createdebitnote(request):
                 return HttpResponse(res)
             bill_no= request.POST['billSelect'],
             print(bill_no)
-            bill_id=Bill.objects.get(Bill_Number = bill_no)
-            print(bill_id)
+            # bill_id=Bill.objects.get(Bill_Number = bill_no)
+            bill_id = Bill.objects.get(Bill_Number = request.POST['billSelect'])
+            print(bill_id.id)
+
+
+
 
             inv = debitnote(
                 company = com,
                 login_details = com.login_details,
                 vendor = Vendor.objects.get(id = request.POST['customerId']),
-                # bills=Bill.objects.get(Bill_Number = request.POST['billSelect']),
+                bills=bill_id,
                 vendor_email = request.POST['customer_email'],
                 billing_address = request.POST['bill_address'],
                 gst_type = request.POST['customer_gst_type'],
@@ -20704,8 +20708,189 @@ def createdebitnote(request):
                 action = 'Created'
             )
 
-            return redirect(adddebit_note)
+            return redirect(debitnote_list)
         else:
             return redirect(adddebit_note)
     else:
        return redirect('/')
+   
+def view_debitnote(request, id):
+    if 'login_id' in request.session:
+        log_id = request.session['login_id']
+        log_details= LoginDetails.objects.get(id=log_id)
+        if log_details.user_type == 'Company':
+            cmp = CompanyDetails.objects.get(login_details = log_details)
+            dash_details = CompanyDetails.objects.get(login_details=log_details)
+        else:
+            cmp = StaffDetails.objects.get(login_details = log_details).company
+            dash_details = StaffDetails.objects.get(login_details=log_details)
+
+        allmodules= ZohoModules.objects.get(company = cmp)
+
+        invoice = debitnote.objects.get(id = id)
+        invItems = debitnote_item.objects.filter(debit_note = invoice)
+        recInv = debitnote.objects.filter(company = cmp)
+        cmts = debitnote_Comments.objects.filter(debit_note = invoice)
+        hist = debitnote_History.objects.filter(debit_note = invoice)
+        last_history = debitnote_History.objects.filter(debit_note = invoice).last()
+        created = debitnote_History.objects.get(debit_note = invoice, action = 'Created')
+
+        context = {
+            'cmp':cmp,'allmodules':allmodules, 'details':dash_details, 'invoice':invoice, 'invItems': invItems, 'allInvoices':recInv, 'comments':cmts, 'history':hist, 'last_history':last_history, 'created':created,
+        }
+        return render(request, 'zohomodules/debitnote/view_debitnote.html', context)
+    else:
+        return redirect('/')
+    
+def convertDebit_note(request,id):
+    if 'login_id' in request.session:
+        rec_inv = debitnote.objects.get(id = id)
+        rec_inv.status = 'Saved'
+        rec_inv.save()
+        return redirect(view_debitnote, id)
+    else:
+        return redirect('/')
+
+def addDebit_noteComment(request, id):
+    if 'login_id' in request.session:
+        log_id = request.session['login_id']
+        log_details= LoginDetails.objects.get(id=log_id)
+        if log_details.user_type == 'Company':
+            com = CompanyDetails.objects.get(login_details = log_details)
+        else:
+            com = StaffDetails.objects.get(login_details = log_details).company
+
+        rec_inv = debitnote.objects.get(id = id)
+        if request.method == "POST":
+            cmt = request.POST['comment'].strip()
+
+            debitnote_Comments.objects.create(company = com, debit_note = rec_inv, comments = cmt)
+            return redirect(view_debitnote, id)
+        return redirect(view_debitnote, id)
+    return redirect('/')
+
+def deleteDebit_noteComment(request,id):
+    if 'login_id' in request.session:
+        cmt = debitnote_Comments.objects.get(id = id)
+        recInvId = cmt.debit_note.id
+        cmt.delete()
+        return redirect(view_debitnote, recInvId)
+    else:
+        return redirect('/')
+
+def deletedebit_note(request, id):
+    if 'login_id' in request.session:
+        log_id = request.session['login_id']
+        log_details= LoginDetails.objects.get(id=log_id)
+        if log_details.user_type == 'Company':
+            com = CompanyDetails.objects.get(login_details = log_details)
+        else:
+            com = StaffDetails.objects.get(login_details = log_details).company
+
+        recInv = debitnote.objects.get( id = id)
+        for i in debitnote_item.objects.filter(debit_note = recInv):
+            item = Items.objects.get(id = i.item.id)
+            item.current_stock += i.quantity
+            item.save()
+        
+        debitnote_item.objects.filter(debit_note = recInv).delete()
+
+        # Storing ref number to deleted table
+        # if entry exists and lesser than the current, update and save => Only one entry per company
+        if debitnote_Reference.objects.filter(company = com).exists():
+            deleted = debitnote_Reference.objects.get(company = com)
+            if int(recInv.reference_no) > int(deleted.reference_number):
+                deleted.reference_number = recInv.reference_no
+                deleted.save()
+        else:
+            debitnote_Reference.objects.create(company = com, login_details = com.login_details, reference_number = recInv.reference_no)
+        
+        recInv.delete()
+        return redirect(debitnote_list)
+
+def attachdebitnoteFile(request, id):
+    if 'login_id' in request.session:
+        inv = debitnote.objects.get(id = id)
+
+        if request.method == 'POST' and len(request.FILES) != 0:
+            inv.document = request.FILES.get('file')
+            inv.save()
+
+        return redirect(view_debitnote, id)
+    else:
+        return redirect('/')
+
+def debitnotePdf(request,id):
+    if 'login_id' in request.session:
+        log_id = request.session['login_id']
+        log_details= LoginDetails.objects.get(id=log_id)
+        if log_details.user_type == 'Company':
+            com = CompanyDetails.objects.get(login_details = log_details)
+        else:
+            com = StaffDetails.objects.get(login_details = log_details).company
+        
+        inv = debitnote.objects.get(id = id)
+        itms = debitnote_item.objects.filter(debit_note = inv)
+    
+        context = {'recInvoice':inv, 'recInvItems':itms,'cmp':com}
+        
+        template_path = 'zohomodules/recurring_invoice/recurring_invoice_pdf.html'
+        fname = 'debitnote_'+inv.debitnote_no
+        # Create a Django response object, and specify content_type as pdftemp_
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] =f'attachment; filename = {fname}.pdf'
+        # find the template and render it.
+        template = get_template(template_path)
+        html = template.render(context)
+
+        # create a pdf
+        pisa_status = pisa.CreatePDF(
+        html, dest=response)
+        # if error then show some funny view
+        if pisa_status.err:
+            return HttpResponse('We had some errors <pre>' + html + '</pre>')
+        return response
+    else:
+        return redirect('/')
+
+def sharedebitnoteeToEmail(request,id):
+    if 'login_id' in request.session:
+        log_id = request.session['login_id']
+        log_details= LoginDetails.objects.get(id=log_id)
+        if log_details.user_type == 'Company':
+            com = CompanyDetails.objects.get(login_details = log_details)
+        else:
+            com = StaffDetails.objects.get(login_details = log_details).company
+        
+        inv = debitnote.objects.get(id = id)
+        itms = debitnote_item.objects.filter(debit_note = inv)
+        try:
+            if request.method == 'POST':
+                emails_string = request.POST['email_ids']
+
+                # Split the string by commas and remove any leading or trailing whitespace
+                emails_list = [email.strip() for email in emails_string.split(',')]
+                email_message = request.POST['email_message']
+                # print(emails_list)
+            
+                context = {'recInvoice':inv, 'recInvItems':itms,'cmp':com}
+                template_path = 'zohomodules/debitnote/debitnote_pdf.html'
+                template = get_template(template_path)
+
+                html  = template.render(context)
+                result = BytesIO()
+                pdf = pisa.pisaDocument(BytesIO(html.encode("ISO-8859-1")), result)
+                pdf = result.getvalue()
+                filename = f'debitnote_{inv.debitnote_no}'
+                subject = f"debitnote_{inv.debitnote_no}"
+                # from django.core.mail import EmailMessage as EmailMsg
+                email = EmailMsg(subject, f"Hi,\nPlease find the attached debit note for - No.-{inv.debitnote_no}. \n{email_message}\n\n--\nRegards,\n{com.company_name}\n{com.address}\n{com.state} - {com.country}\n{com.contact}", from_email=settings.EMAIL_HOST_USER, to=emails_list)
+                email.attach(filename, pdf, "application/pdf")
+                email.send(fail_silently=False)
+
+                messages.success(request, 'debit note details has been shared via email successfully..!')
+                return redirect(view_debitnote,id)
+        except Exception as e:
+            print(e)
+            messages.error(request, f'{e}')
+            return redirect(view_debitnote, id)

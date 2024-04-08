@@ -163,12 +163,12 @@
                             </thead>
                             <tbody>
                                 {% for a in invoices %}
-                                <tr class='clickable-row text-center' onclick="window.location.href=`{% url 'viewRecurringInvoice' a.id %}`">
+                                <tr class='clickable-row text-center' onclick="window.location.href=`{% url 'view_debitnote' a.id %}`">
                                     <td>{{ forloop.counter }}</td>
-                                    <td>{{ a.start_date }}</td>
-                                    <td>{{ a.rec_invoice_no }}</td>
-                                    <td>{{ a.customer.first_name }} {{ a.customer.last_name }}</td>
-                                    <td>{{ a.customer_email}}</td>
+                                    <td>{{ a.debitnote_date }}</td>
+                                    <td>{{ a.debitnote_no }}</td>
+                                    <td>{{ a.vendor.first_name }} {{ a.vendor.last_name }}</td>
+                                    <td>{{ a.vendor_email}}</td>
                                     <td>{{ a.grandtotal }}</td>
                                     <td>{{ a.status }}</td>
                                     <td>{{ a.balance }}</td>

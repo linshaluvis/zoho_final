@@ -493,6 +493,16 @@ urlpatterns = [
     path('Company/getvendorsAjax', views.getvendorsAjax, name='getvendorsAjax'),
     path('Company/getVendorrDetailsAjax', views.getVendorrDetailsAjax, name='getVendorrDetailsAjax'),
     path('Company/createdebitnote', views.createdebitnote, name='createdebitnote'),
+    path('Company/view_debitnote/<int:id>', views.view_debitnote, name='view_debitnote'),
+    path('Company/addDebit_noteComment/<int:id>', views.addDebit_noteComment, name='addDebit_noteComment'),
+    path('Company/convertDebit_note/<int:id>', views.convertDebit_note, name='convertDebit_note'),
+    path('Company/deleteDebit_noteComment/<int:id>', views.deleteDebit_noteComment, name='deleteDebit_noteComment'),
+    path('Company/deletedebit_note/<int:id>', views.deletedebit_note, name='deletedebit_note'),
+    path('Company/attachdebitnoteFile/<int:id>', views.attachdebitnoteFile, name='attachdebitnoteFile'),
+    path('Company/debitnotePdf/<int:id>', views.debitnotePdf, name='debitnotePdf'),
+    path('Company/sharedebitnoteeToEmail/<int:id>', views.sharedebitnoteeToEmail, name='sharedebitnoteeToEmail'),
+
+
 
 
 
