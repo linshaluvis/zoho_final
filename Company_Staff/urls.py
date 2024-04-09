@@ -501,6 +501,12 @@ urlpatterns = [
     path('Company/attachdebitnoteFile/<int:id>', views.attachdebitnoteFile, name='attachdebitnoteFile'),
     path('Company/debitnotePdf/<int:id>', views.debitnotePdf, name='debitnotePdf'),
     path('Company/sharedebitnoteeToEmail/<int:id>', views.sharedebitnoteeToEmail, name='sharedebitnoteeToEmail'),
+    path('Company/editdebitnote/<int:id>',views.editdebitnote, name='editdebitnote'),
+    path('Company/get_bill_items', views.get_bill_items, name='get_bill_items'),
+    path('Company/getItemDetaildebit_bill', views.getItemDetaildebit_bill, name='getItemDetaildebit_bill'),
+
+
+
 
 
 

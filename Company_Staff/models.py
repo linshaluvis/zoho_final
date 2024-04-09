@@ -1153,8 +1153,33 @@ class Bill(models.Model):
 
     def getNumFieldName(self):
         return 'Bill_Number'
+    
         
-        
+class BillItems(models.Model):
+    Items = models.CharField(max_length=220,null=True,blank=True)
+    HSN = models.CharField(max_length=220,null=True,blank=True)
+    Quantity = models.IntegerField(null=True)
+    Price = models.IntegerField(null=True)
+    Tax_Rate = models.IntegerField(null=True)
+    Discount = models.IntegerField(null=True)
+    Total = models.IntegerField(null=True)
+    Bills = models.ForeignKey(Bill,on_delete=models.CASCADE)
+    Login_Details = models.ForeignKey(LoginDetails, on_delete=models.CASCADE,null=True,blank=True)
+    Company = models.ForeignKey(CompanyDetails,on_delete=models.CASCADE)
+    
+class Bill_History(models.Model):
+    Company = models.ForeignKey(CompanyDetails,on_delete=models.CASCADE)
+    Login_Details = models.ForeignKey(LoginDetails, on_delete=models.CASCADE,null=True,blank=True)
+    Bill = models.ForeignKey(Bill,on_delete=models.CASCADE)
+    Date = models.DateField(null=True)
+    Action = models.CharField(max_length=220,null=True,blank=True)
+
+class Bill_Reference(models.Model):
+    Reference_Number = models.IntegerField(null=True)
+    Company = models.ForeignKey(CompanyDetails,on_delete=models.CASCADE)
+    Login_Details = models.ForeignKey(LoginDetails, on_delete=models.CASCADE,null=True,blank=True)
+    Bill = models.ForeignKey(Bill,on_delete=models.CASCADE,null=True,blank=True)
+       
 #------------Sales Order---------------
 class SaleOrder(models.Model):
     company = models.ForeignKey(CompanyDetails, on_delete=models.CASCADE)

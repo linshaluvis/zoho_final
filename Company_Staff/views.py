@@ -20894,3 +20894,159 @@ def sharedebitnoteeToEmail(request,id):
             print(e)
             messages.error(request, f'{e}')
             return redirect(view_debitnote, id)
+        
+def editdebitnote(request, id):
+    if 'login_id' in request.session:
+        log_id = request.session['login_id']
+        log_details= LoginDetails.objects.get(id=log_id)
+        if log_details.user_type == 'Company':
+            cmp = CompanyDetails.objects.get(login_details = log_details)
+            dash_details = CompanyDetails.objects.get(login_details=log_details)
+        else:
+            cmp = StaffDetails.objects.get(login_details = log_details).company
+            dash_details = StaffDetails.objects.get(login_details=log_details)
+
+        allmodules= ZohoModules.objects.get(company = cmp)
+       
+        cust = Vendor.objects.filter(company = cmp, vendor_status = 'Active')
+        trm = Bill.objects.filter(Company = cmp)
+        repeat = CompanyRepeatEvery.objects.filter(company = cmp)
+        bnk = Banking.objects.filter(company = cmp)
+        priceList = PriceList.objects.filter(company = cmp, type = 'purchase', status = 'Active')
+        itms = Items.objects.filter(company = cmp, activation_tag = 'active')
+        units = Unit.objects.filter(company=cmp)
+        accounts=Chart_of_Accounts.objects.filter(company=cmp)
+
+        invoice = debitnote.objects.get(id = id)
+       
+
+        print(invoice)
+        invItems = debitnote_item.objects.filter(debit_note = invoice)
+
+        context = {
+            'cmp':cmp,'allmodules':allmodules, 'details':dash_details, 'customers': cust,'pTerms':trm, 'repeat':repeat, 'banks':bnk, 'priceListItems':priceList, 'items':itms,
+            'units': units,'accounts':accounts, 'invoice':invoice, 'invItems': invItems,
+        }
+        return render(request, 'zohomodules/debitnote/edit_debitnote.html', context)
+    else:
+        return redirect('/')
+def get_bill_items(request):
+    # Query the database to retrieve the bill object
+    billnumber = request.GET.get('bill_number')
+    print(billnumber)
+    bill = get_object_or_404(Bill, Bill_Number=billnumber)
+    print(bill)
+
+
+    # Retrieve all items associated with the bill
+    bill_items = BillItems.objects.filter(Bills=bill)
+
+    # Prepare a list to store item details
+    items_list = []
+    
+
+    # Iterate over each item and retrieve its details
+    for item in bill_items:
+        item_details = {
+            'Items': item.Items,
+            'HSN': item.HSN,
+            'Quantity': item.Quantity,
+            'Price': item.Price,
+            'Tax_Rate': item.Tax_Rate,
+            'Discount': item.Discount,
+            'Total': item.Total
+        }
+        items_list.append(item_details)
+        print(items_list)
+
+    # Return item details as JSON response
+    return JsonResponse(items_list, safe=False)
+def getItemDetaildebit_bill(request):
+    if 'login_id' in request.session:
+        log_id = request.session['login_id']
+        log_details= LoginDetails.objects.get(id=log_id)
+        if log_details.user_type == 'Company':
+            cmp = CompanyDetails.objects.get(login_details = log_details)
+        else:
+            cmp = StaffDetails.objects.get(login_details = log_details).company
+        
+        itemName = request.GET['item']
+        priceListId = request.GET['listId']
+        item = Items.objects.filter(company = cmp, item_name = itemName).first()
+
+        if priceListId != "":
+            priceList = PriceList.objects.get(id = int(priceListId))
+
+            if priceList.item_rate_type == 'Each Item':
+                try:
+                    priceListPrice = float(PriceListItem.objects.get(company = cmp, price_list = priceList, item = item).custom_rate)
+                except:
+                    priceListPrice = item.selling_price
+            else:
+                mark = priceList.percentage_type
+                percentage = float(priceList.percentage_value)
+                roundOff = priceList.round_off
+
+                if mark == 'Markup':
+                    price = float(item.selling_price) + float((item.selling_price) * (percentage/100))
+                else:
+                    price = float(item.selling_price) - float((item.selling_price) * (percentage/100))
+
+                if priceList.round_off != 'Never Mind':
+                    if roundOff == 'Nearest Whole Number':
+                        finalPrice = round(price)
+                    else:
+                        finalPrice = int(price) + float(roundOff)
+                else:
+                    finalPrice = price
+
+                priceListPrice = finalPrice
+        else:
+            priceListPrice = None
+
+        context = {
+            'status':True,
+            'id': item.id,
+            'hsn':item.hsn_code,
+            'sales_rate':item.selling_price,
+            'purchase_rate':item.purchase_price,
+            'avl':item.current_stock,
+            'tax': True if item.tax_reference == 'taxable' else False,
+            'gst':item.intrastate_tax,
+            'igst':item.interstate_tax,
+            'PLPrice':priceListPrice,
+
+        }
+        return JsonResponse(context)
+    else:
+       return redirect('/')
+def checkbill(request):
+    # Query the database to retrieve the bill object
+    billnumber = request.GET.get('bill_number')
+    print(billnumber)
+    bill = get_object_or_404(Bill, Bill_Number=billnumber)
+    print(bill)
+
+
+    # Retrieve all items associated with the bill
+    bill_items = BillItems.objects.filter(Bills=bill)
+
+    # Prepare a list to store item details
+    items_list = []
+
+    # Iterate over each item and retrieve its details
+    for item in bill_items:
+        item_details = {
+            'Items': item.Items,
+            'HSN': item.HSN,
+            'Quantity': item.Quantity,
+            'Price': item.Price,
+            'Tax_Rate': item.Tax_Rate,
+            'Discount': item.Discount,
+            'Total': item.Total
+        }
+        items_list.append(item_details)
+        print(items_list)
+
+    # Return item details as JSON response
+    return JsonResponse(items_list, safe=False)
