@@ -188,7 +188,7 @@
     <div class="modal-dialog modal-xl">
         <div class="modal-content" style="background-color: #3b3b3b;">
             <div class="modal-header">
-                <h3 class="modal-title text-light" id="exampleModalLabel">Import Recurring Invoice</h3>
+                <h3 class="modal-title text-light" id="exampleModalLabel">Import DEBIT NOTE</h3>
                 <button type="button" class="btn close text-white" data-bs-dismiss="modal" aria-label="Close">
                   <span aria-hidden="true" style="font-size: x-large;">&times;</span>
                 </button>
@@ -197,19 +197,19 @@
                 <div class="file_instructions">
                     <div class="alert alert-danger" role="alert">
                         <span class="fw-bolder">IMPORTANT:</span>
-                        <p>File should have 2 sheets named 'recurring_invoice' & 'items' and column name & order should be in the given formate(Uppercase).</p>
-                        <p class="fw-bolder">Recurring Invoice sheet - SLNO*, CUSTOMER*, DATE*, PLACE OF SUPPLY*, PROFILE NAME, ENTRY TYPE, RI NO*, TERMS*, REPEAT EVERY*, PRICE LIST, DESCRIPTION, SUB TOTAL*, IGST*, CGST*, SGST*, TAX AMOUNT*, ADJUSTMENT, SHIPPING CHARGE, GRAND TOTAL*, ADVANCE </p>
-                        <p class="fw-bolder">Items sheet - RI NO**, PRODUCT*, HSN*, QUANTITY*, PRICE*, TAX PERCENTAGE*, DISCOUNT, TOTAL* </p>
+                        <p>File should have 2 sheets named 'debitnote' & 'items' and column name & order should be in the given formate(Uppercase).</p>
+                        <p class="fw-bolder">Debit Note sheet - SLNO*, VENDOR*, DATE*, PLACE OF SUPPLY*,  DB NO*,  PRICE LIST, DESCRIPTION, SUB TOTAL*, IGST*, CGST*, SGST*, TAX AMOUNT*, ADJUSTMENT, SHIPPING CHARGE, GRAND TOTAL*, ADVANCE </p>
+                        <p class="fw-bolder">Items sheet - DB NO**, PRODUCT*, HSN*, QUANTITY*, PRICE*, TAX PERCENTAGE*, DISCOUNT, TOTAL* </p>
                         <p>* All required columns should be filled.</p>
-                        <p>** <b>RI NO</b> is <b>SLNO</b> of recurring_invoice</p>
+                        <p>** <b>DB NO</b> is <b>SLNO</b> of Debit Note</p>
                         <p>Place of supply should be in the give format with state code('Ex: [KL]-Kerala') or '[OT]-Other Territory'.</p>
                         <p>Date format should be 'YYYY-MM-DD' or 'DD-MM-YYYY'.</p>
                     </div>
                 </div>
                 <div class="sample_file mb-2">
-                    <a href="{% url 'downloadRecurringInvoiceSampleImportFile' %}" class="fw-bolder btn btn-outline-warning btn-sm">Download Sample File</a>
+                    <a href="{% url 'downloaddebitnoteSampleImportFile' %}" class="fw-bolder btn btn-outline-warning btn-sm">Download Sample File</a>
                 </div>
-                <form id="importEstimateForm" action="{% url 'importRecurringInvoiceFromExcel' %}" method="POST" class="form" enctype="multipart/form-data">
+                <form id="importEstimateForm" action="{% url 'importdebitnoteFromExcel' %}" method="POST" class="form" enctype="multipart/form-data">
                     {% csrf_token %}
                     <div class="form-group">
                         <label for="excel_file" class="form-label text-white">File</label>
@@ -303,7 +303,7 @@
         var ws = XLSX.utils.table_to_sheet(table);
         var wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
-        XLSX.writeFile(wb, 'Recurring_invoice.xlsx');
+        XLSX.writeFile(wb, 'debitnote.xlsx');
     }
 
     function sortTable(columnIndex) {

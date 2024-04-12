@@ -18972,6 +18972,7 @@ def getItemDetailsAjax(request):
             cmp = StaffDetails.objects.get(login_details = log_details).company
         
         itemName = request.GET['item']
+        print(itemName)
         priceListId = request.GET['listId']
         item = Items.objects.filter(company = cmp, item_name = itemName).first()
 
@@ -20961,92 +20962,485 @@ def get_bill_items(request):
 
     # Return item details as JSON response
     return JsonResponse(items_list, safe=False)
-def getItemDetaildebit_bill(request):
+
+def checkdebitnoteNumber(request):
     if 'login_id' in request.session:
         log_id = request.session['login_id']
         log_details= LoginDetails.objects.get(id=log_id)
         if log_details.user_type == 'Company':
-            cmp = CompanyDetails.objects.get(login_details = log_details)
+            com = CompanyDetails.objects.get(login_details = log_details)
         else:
-            cmp = StaffDetails.objects.get(login_details = log_details).company
+            com = StaffDetails.objects.get(login_details = log_details).company
         
-        itemName = request.GET['item']
-        priceListId = request.GET['listId']
-        item = Items.objects.filter(company = cmp, item_name = itemName).first()
+        RecInvNo = request.GET['RecInvNum']
 
-        if priceListId != "":
-            priceList = PriceList.objects.get(id = int(priceListId))
+        # Finding next rec_invoice number w r t last rec_invoice number if exists.
+        nxtInv = ""
+        lastInv = debitnote.objects.filter(company = com).last()
+        if lastInv:
+            inv_no = str(lastInv.debitnote_no)
+            numbers = []
+            stri = []
+            for word in inv_no:
+                if word.isdigit():
+                    numbers.append(word)
+                else:
+                    stri.append(word)
 
-            if priceList.item_rate_type == 'Each Item':
-                try:
-                    priceListPrice = float(PriceListItem.objects.get(company = cmp, price_list = priceList, item = item).custom_rate)
-                except:
-                    priceListPrice = item.selling_price
+            num = ''.join(numbers)
+            st = ''.join(stri)
+
+            inv_num = int(num) + 1
+            if num[0] == 0:
+                nxtInv = st + num.zfill(len(num)) 
             else:
-                mark = priceList.percentage_type
-                percentage = float(priceList.percentage_value)
-                roundOff = priceList.round_off
+                nxtInv = st + str(inv_num).zfill(len(num))
+        # else:
+        #     nxtInv = 'RI01'
 
-                if mark == 'Markup':
-                    price = float(item.selling_price) + float((item.selling_price) * (percentage/100))
-                else:
-                    price = float(item.selling_price) - float((item.selling_price) * (percentage/100))
+        PatternStr = []
+        for word in RecInvNo:
+            if word.isdigit():
+                pass
+            else:
+                PatternStr.append(word)
+        
+        pattern = ''
+        for j in PatternStr:
+            pattern += j
 
-                if priceList.round_off != 'Never Mind':
-                    if roundOff == 'Nearest Whole Number':
-                        finalPrice = round(price)
-                    else:
-                        finalPrice = int(price) + float(roundOff)
-                else:
-                    finalPrice = price
+        pattern_exists = checkRecInvNumberPattern(pattern)
 
-                priceListPrice = finalPrice
+        if pattern !="" and pattern_exists:
+            return JsonResponse({'status':False, 'message':'Debit Note No. Pattern already Exists.!'})
+        elif debitnote.objects.filter(company = com, debitnote_no__iexact = RecInvNo).exists():
+            return JsonResponse({'status':False, 'message':'Debit Note No. already Exists.!'})
+        elif nxtInv != "" and RecInvNo != nxtInv:
+            return JsonResponse({'status':False, 'message':'Debit Note No. is not continuous.!'})
         else:
-            priceListPrice = None
-
-        context = {
-            'status':True,
-            'id': item.id,
-            'hsn':item.hsn_code,
-            'sales_rate':item.selling_price,
-            'purchase_rate':item.purchase_price,
-            'avl':item.current_stock,
-            'tax': True if item.tax_reference == 'taxable' else False,
-            'gst':item.intrastate_tax,
-            'igst':item.interstate_tax,
-            'PLPrice':priceListPrice,
-
-        }
-        return JsonResponse(context)
+            return JsonResponse({'status':True, 'message':'Number is okay.!'})
     else:
        return redirect('/')
-def checkbill(request):
-    # Query the database to retrieve the bill object
-    billnumber = request.GET.get('bill_number')
-    print(billnumber)
-    bill = get_object_or_404(Bill, Bill_Number=billnumber)
-    print(bill)
 
 
-    # Retrieve all items associated with the bill
-    bill_items = BillItems.objects.filter(Bills=bill)
 
-    # Prepare a list to store item details
-    items_list = []
 
-    # Iterate over each item and retrieve its details
-    for item in bill_items:
-        item_details = {
-            'Items': item.Items,
-            'HSN': item.HSN,
-            'Quantity': item.Quantity,
-            'Price': item.Price,
-            'Tax_Rate': item.Tax_Rate,
-            'Discount': item.Discount,
-            'Total': item.Total
-        }
-        items_list.append(item_details)
-        print(items_list)
+def updatedebitnote(request, id):
+    if 'login_id' in request.session:
+        log_id = request.session['login_id']
+        log_details= LoginDetails.objects.get(id=log_id)
+        if log_details.user_type == 'Company':
+            com = CompanyDetails.objects.get(login_details = log_details)
+        else:
+            com = StaffDetails.objects.get(login_details = log_details).company
 
-    # Return item details as JSON response
-    return JsonResponse(items_list, safe=False)
+        rec_inv = debitnote.objects.get(id = id)
+        if request.method == 'POST':
+            invNum = request.POST['rec_invoice_no']
+            bill_id = Bill.objects.get(Bill_Number =  request.POST['bill_number'])
+
+
+            PatternStr = []
+            for word in invNum:
+                if word.isdigit():
+                    pass
+                else:
+                    PatternStr.append(word)
+            
+            pattern = ''
+            for j in PatternStr:
+                pattern += j
+
+            pattern_exists = checkRecInvNumberPattern(pattern)
+
+            if pattern !="" and pattern_exists:
+                res = f'<script>alert("Debitnote No. Pattern already Exists.! Try another!");window.history.back();</script>'
+                return HttpResponse(res)
+
+            if rec_inv.debitnote_no != invNum and debitnote.objects.filter(company = com, debitnote_no__iexact = invNum).exists():
+                res = f'<script>alert("Debit note Number `{invNum}` already exists, try another!");window.history.back();</script>'
+                return HttpResponse(res)
+
+            rec_inv.vendor = Vendor.objects.get(id = request.POST['customerId'])
+            rec_inv.bills= Bill.objects.get(Bill_Number =  request.POST['bill_number'])
+            rec_inv.vendor_email = request.POST['customer_email']
+            rec_inv.billing_address = request.POST['bill_address']
+            rec_inv.gst_type = request.POST['customer_gst_type']
+            rec_inv.gstin = request.POST['customer_gstin']
+            rec_inv.place_of_supply = request.POST['place_of_supply']
+            # rec_inv.profile_name = request.POST['profile_name']
+            # rec_inv.entry_type = None if request.POST['entry_type'] == "" else request.POST['entry_type']
+            rec_inv.reference_no = request.POST['reference_number']
+            rec_inv.debitnote_no = invNum
+            # rec_inv.payment_terms = Company_Payment_Term.objects.get(id = request.POST['payment_term'])
+            rec_inv.debitnote_date = request.POST['start_date']
+            rec_inv.bill_no = request.POST['bill_number']
+            # rec_inv.salesOrder_no = request.POST['order_number']
+            rec_inv.price_list_applied = True if 'priceList' in request.POST else False
+            rec_inv.price_list = None if request.POST['price_list_id'] == "" else PriceList.objects.get(id = request.POST['price_list_id'])
+            # rec_inv.repeat_every = CompanyRepeatEvery.objects.get(id = request.POST['repeat_every'])
+            rec_inv.payment_method = None if request.POST['payment_method'] == "" else request.POST['payment_method']
+            rec_inv.cheque_number = None if request.POST['cheque_id'] == "" else request.POST['cheque_id']
+            rec_inv.upi_number = None if request.POST['upi_id'] == "" else request.POST['upi_id']
+            rec_inv.bank_account_number = None if request.POST['bnk_id'] == "" else request.POST['bnk_id']
+            rec_inv.subtotal = 0.0 if request.POST['subtotal'] == "" else float(request.POST['subtotal'])
+            rec_inv.igst = 0.0 if request.POST['igst'] == "" else float(request.POST['igst'])
+            rec_inv.cgst = 0.0 if request.POST['cgst'] == "" else float(request.POST['cgst'])
+            rec_inv.sgst = 0.0 if request.POST['sgst'] == "" else float(request.POST['sgst'])
+            rec_inv.tax_amount = 0.0 if request.POST['taxamount'] == "" else float(request.POST['taxamount'])
+            rec_inv.adjustment = 0.0 if request.POST['adj'] == "" else float(request.POST['adj'])
+            rec_inv.shipping_charge = 0.0 if request.POST['ship'] == "" else float(request.POST['ship'])
+            rec_inv.grandtotal = 0.0 if request.POST['grandtotal'] == "" else float(request.POST['grandtotal'])
+            rec_inv.advance_paid = 0.0 if request.POST['advance'] == "" else float(request.POST['advance'])
+            rec_inv.balance = request.POST['grandtotal'] if request.POST['balance'] == "" else float(request.POST['balance'])
+            rec_inv.description = request.POST['note']
+            rec_inv.terms_and_conditions = request.POST['terms']
+
+            if len(request.FILES) != 0:
+                rec_inv.document=request.FILES.get('file')
+            rec_inv.save()
+
+
+            # Save rec_invoice items.
+
+            itemId = request.POST.getlist("item_id[]")
+            itemName = request.POST.getlist("item_name[]")
+            hsn  = request.POST.getlist("hsn[]")
+            qty = request.POST.getlist("qty[]")
+            price = request.POST.getlist("priceListPrice[]") if 'priceList' in request.POST else request.POST.getlist("price[]")
+            tax = request.POST.getlist("taxGST[]") if request.POST['place_of_supply'] == com.state else request.POST.getlist("taxIGST[]")
+            discount = request.POST.getlist("discount[]")
+            total = request.POST.getlist("total[]")
+            inv_item_ids = request.POST.getlist("id[]")
+            invItem_ids = [int(id) for id in inv_item_ids]
+
+            inv_items = debitnote_item.objects.filter(debit_note = rec_inv)
+            object_ids = [obj.id for obj in inv_items]
+
+            ids_to_delete = [obj_id for obj_id in object_ids if obj_id not in invItem_ids]
+            for itmId in ids_to_delete:
+                invItem = debitnote_item.objects.get(id = itmId)
+                item = Items.objects.get(id = invItem.item.id)
+                item.current_stock += invItem.quantity
+                item.save()
+
+            debitnote_item.objects.filter(id__in=ids_to_delete).delete()
+            
+            count = debitnote_item.objects.filter(debit_note = rec_inv).count()
+
+            if len(itemId)==len(itemName)==len(hsn)==len(qty)==len(price)==len(tax)==len(discount)==len(total)==len(invItem_ids) and invItem_ids and itemId and itemName and hsn and qty and price and tax and discount and total:
+                mapped = zip(itemId,itemName,hsn,qty,price,tax,discount,total,invItem_ids)
+                mapped = list(mapped)
+                for ele in mapped:
+                    if int(len(itemId))>int(count):
+                        if ele[8] == 0:
+                            itm = Items.objects.get(id = int(ele[0]))
+                            debitnote_item.objects.create(company = com, login_details = com.login_details, debit_note = rec_inv, item = itm, hsn = ele[2], quantity = int(ele[3]), price = float(ele[4]), tax_rate = ele[5], discount = float(ele[6]), total = float(ele[7]))
+                            itm.current_stock -= int(ele[3])
+                            itm.save()
+                        else:
+                            itm = Items.objects.get(id = int(ele[0]))
+                            inItm = debitnote_item.objects.get(id = int(ele[8]))
+                            crQty = int(inItm.quantity)
+                            
+                            debitnote_item.objects.filter( id = int(ele[8])).update(debit_note = rec_inv, item = itm, hsn = ele[2], quantity = int(ele[3]), price = float(ele[4]), tax_rate = ele[5], discount = float(ele[6]), total = float(ele[7]))
+
+                            if crQty < int(ele[3]):
+                                itm.current_stock -=  abs(crQty - int(ele[3]))
+                            elif crQty > int(ele[3]):
+                                itm.current_stock += abs(crQty - int(ele[3]))
+                            itm.save()
+                    else:
+                        itm = Items.objects.get(id = int(ele[0]))
+                        inItm = debitnote_item.objects.get(id = int(ele[8]))
+                        crQty = int(inItm.quantity)
+
+                        debitnote_item.objects.filter( id = int(ele[8])).update(debit_note = rec_inv, item = itm, hsn = ele[2], quantity = int(ele[3]), price = float(ele[4]), tax_rate = ele[5], discount = float(ele[6]), total = float(ele[7]))
+
+                        if crQty < int(ele[3]):
+                            itm.current_stock -=  abs(crQty - int(ele[3]))
+                        elif crQty > int(ele[3]):
+                            itm.current_stock += abs(crQty - int(ele[3]))
+                        itm.save()
+            
+            # Save transaction
+                    
+            debitnote_History.objects.create(
+                company = com,
+                login_details = log_details,
+                debit_note = rec_inv,
+                action = 'Edited'
+            )
+
+            return redirect(view_debitnote, id)
+        else:
+            return redirect(view_debitnote, id)
+    else:
+       return redirect('/')
+   
+def downloaddebitnoteSampleImportFile(request):
+    recInv_table_data = [['SLNO','VENDOR','DATE','PLACE OF SUPPLY','DB NO','PRICE LIST','DESCRIPTION','SUB TOTAL','IGST','CGST','SGST','TAX AMOUNT','ADJUSTMENT','SHIPPING CHARGE','GRAND TOTAL','ADVANCE'],['1', 'Kevin Debryne', '2024-03-20', '[KL]-Kerala','DB100','','','1000','0','25','25','50','0','0','1050','1000']]
+    items_table_data = [['DB NO', 'PRODUCT','HSN','QUANTITY','PRICE','TAX PERCENTAGE','DISCOUNT','TOTAL'], ['1', 'Test Item 1','789987','1','1000','5','0','1000']]
+
+    wb = Workbook()
+
+    sheet1 = wb.active
+    sheet1.title = 'DEBIT_NOTE'
+    sheet2 = wb.create_sheet(title='items')
+
+    # Populate the sheets with data
+    for row in recInv_table_data:
+        sheet1.append(row)
+
+    for row in items_table_data:
+        sheet2.append(row)
+
+    # Create a response with the Excel file
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename=debit_note_sample_file.xlsx'
+
+    # Save the workbook to the response
+    wb.save(response)
+
+    return response
+
+def importdebitnoteFromExcel(request):
+    if 'login_id' in request.session:
+        log_id = request.session['login_id']
+        log_details= LoginDetails.objects.get(id=log_id)
+        if log_details.user_type == 'Company':
+            com = CompanyDetails.objects.get(login_details = log_details)
+        else:
+            com = StaffDetails.objects.get(login_details = log_details).company 
+
+        current_datetime = timezone.now()
+        dateToday =  current_datetime.date()
+
+        if request.method == "POST" and 'excel_file' in request.FILES:
+        
+            excel_file = request.FILES['excel_file']
+            print("ok")
+
+            wb = load_workbook(excel_file)
+
+            # checking estimate sheet columns
+            try:
+                ws = wb["DEBIT_NOTE"]
+            except:
+                print('sheet not found')
+                messages.error(request,'`DEBIT_NOTE` sheet not found.! Please check.')
+                return redirect(debitnote_list)
+
+            try:
+                ws = wb["items"]
+            except:
+                print('sheet not found')
+                messages.error(request,'`items` sheet not found.! Please check.')
+                return redirect(debitnote_list)
+            
+            ws = wb["DEBIT_NOTE"]
+            rec_inv_columns = ['SLNO','VENDOR','DATE','PLACE OF SUPPLY','DB NO','PRICE LIST','DESCRIPTION','SUB TOTAL','IGST','CGST','SGST','TAX AMOUNT','ADJUSTMENT','SHIPPING CHARGE','GRAND TOTAL','ADVANCE']
+            rec_inv_sheet = [cell.value for cell in ws[1]]
+            if rec_inv_sheet != rec_inv_columns:
+                print('invalid sheet')
+                messages.error(request,'`DEBIT_NOTE` sheet column names or order is not in the required formate.! Please check.')
+                return redirect(debitnote_list)
+
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                slno, vendor,date,place_of_supply, debitnote_no, price_list, description, subtotal, igst, cgst, sgst, taxamount, adjustment, shipping, grandtotal, advance = row
+                if slno is None  or vendor is None  or date is None or place_of_supply is None  or debitnote_no is None  or subtotal is None or taxamount is None or grandtotal is None:
+                    print('debitnote == invalid data')
+                    messages.error(request,'`debitnote` sheet entries missing required fields.! Please check.')
+                    return redirect(debitnote_list)
+            
+            # checking items sheet columns
+            ws = wb["items"]
+            items_columns = ['DB NO','PRODUCT','HSN','QUANTITY','PRICE','TAX PERCENTAGE','DISCOUNT','TOTAL']
+            items_sheet = [cell.value for cell in ws[1]]
+            if items_sheet != items_columns:
+                print('invalid sheet')
+                messages.error(request,'`items` sheet column names or order is not in the required formate.! Please check.')
+                return redirect(debitnote_list)
+
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                db_no,name,hsn,quantity,price,tax_percentage,discount,total = row
+                if db_no is None or name is None or quantity is None or tax_percentage is None or total is None:
+                    print('items == invalid data')
+                    messages.error(request,'`items` sheet entries missing required fields.! Please check.')
+                    return redirect(debitnote_list)
+            
+            # getting data from rec_invoice sheet and create rec_invoice.
+            incorrect_data = []
+            existing_pattern = []
+            ws = wb['DEBIT_NOTE']
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                slno, vendor,debit_note_date,place_of_supply, debit_note_no, price_list, description, subtotal, igst, cgst, sgst, taxamount, adjustment, shipping, grandtotal, advance = row
+                recInvNo = slno
+                if slno is None:
+                    continue
+                # Fetching last rec_inv and assigning upcoming rec_inv no as current + 1
+                # Also check for if any rec_inv is deleted and rec_inv no is continuos w r t the deleted rec_inv
+                latest_inv = debitnote.objects.filter(company = com).order_by('-id').first()
+                
+                new_number = int(latest_inv.reference_no) + 1 if latest_inv else 1
+
+                if debitnote_Reference.objects.filter(company = com).exists():
+                    deleted = debitnote_Reference.objects.get(company = com)
+                    
+                    if deleted:
+                        while int(deleted.reference_number) >= new_number:
+                            new_number+=1
+                
+                cust = vendor.split(' ')
+            
+                if len(cust) > 2:
+                    cust[1] = cust[1] + ' ' + ' '.join(cust[2:])
+                    cust = cust[:2]
+                    fName = cust[0]
+                    lName = cust[1]
+                else:
+                    fName = cust[0]
+                    lName = cust[1]
+                print(cust,fName,lName)
+
+                if lName == "":  
+                    if not Vendor.objects.filter(company = com, first_name = fName).exists():
+                        print('No vendor1')
+                        incorrect_data.append(slno)
+                        continue
+                    try:
+                        c = Vendor.objects.filter(company = com, first_name = fName).first()
+                        email = c.vendor_email
+                        gstType = c.gst_treatment
+                        gstIn = c.gst_number
+                        adrs = f"{c.billing_address}, {c.billing_city}\n{c.billing_state}\n{c.billing_country}\n{c.billing_pin_code}"
+                    except:
+                        pass
+
+                if fName != "" and lName != "":  
+                    if not Vendor.objects.filter(company = com, first_name = fName, last_name = lName).exists():
+                        print('No vendor2')
+                        incorrect_data.append(slno)
+                        continue
+                    try:
+                        c = Vendor.objects.filter(company = com, first_name = fName, last_name = lName).first()
+                        email = c.vendor_email
+                        gstType = c.gst_treatment
+                        gstIn = c.gst_number
+                        adrs = f"{c.billing_address}, {c.billing_city}\n{c.billing_state}\n{c.billing_country}\n{c.billing_pin_code}"
+                    except:
+                        pass
+
+                if debit_note_date is None:
+                    debit_note_date = dateToday
+                else:
+                    debit_note_date = datetime.strptime(debit_note_date, '%Y-%m-%d').date()
+
+                PatternStr = []
+                for word in debit_note_no:
+                    if word.isdigit():
+                        pass
+                    else:
+                        PatternStr.append(word)
+                
+                pattern = ''
+                for j in PatternStr:
+                    pattern += j
+
+                pattern_exists = checkRecInvNumberPattern(pattern)
+
+                if pattern !="" and pattern_exists:
+                    existing_pattern.append(slno)
+                    continue
+
+                while debitnote.objects.filter(company = com, debitnote_no__iexact = debit_note_no).exists():
+                    debit_note_no = getNextRINumber(debit_note_no)
+
+                
+                try:
+                    priceList = PriceList.objects.get(company = com, name = price_list)
+                except:
+                    priceList = None
+
+                
+
+                recInv = debitnote(
+                    company = com,
+                    login_details = com.login_details,
+                    vendor = None if c is None else c,
+                    vendor_email = email,
+                    billing_address = adrs,
+                    gst_type = gstType,
+                    gstin = gstIn,
+                    place_of_supply = place_of_supply,
+                    reference_no = new_number,
+                    debitnote_no = debit_note_no,
+                    debitnote_date = debit_note_date,
+                    price_list_applied = True if priceList is not None else False,
+                    price_list = priceList,
+                    payment_method = None,
+                    cheque_number = None,
+                    upi_number = None,
+                    bank_account_number = None,
+                    subtotal = 0.0 if subtotal == "" else float(subtotal),
+                    igst = 0.0 if igst == "" else float(igst),
+                    cgst = 0.0 if cgst == "" else float(cgst),
+                    sgst = 0.0 if sgst == "" else float(sgst),
+                    tax_amount = 0.0 if taxamount == "" else float(taxamount),
+                    adjustment = 0.0 if adjustment == "" else float(adjustment),
+                    shipping_charge = 0.0 if shipping == "" else float(shipping),
+                    grandtotal = 0.0 if grandtotal == "" else float(grandtotal),
+                    advance_paid = 0.0 if advance == "" else float(advance),
+                    balance = float(grandtotal) - float(advance),
+                    description = description,
+                    status = "Draft"
+                )
+                recInv.save()
+
+                # Transaction history
+                history = debitnote_History(
+                    company = com,
+                    login_details = log_details,
+                    debit_note = recInv,
+                    action = 'Created'
+                )
+                history.save()
+
+                # Items for the estimate
+                ws = wb['items']
+                for row in ws.iter_rows(min_row=2, values_only=True):
+                    rec_no,name,hsn,quantity,price,tax_percentage,discount,total = row
+                    if int(rec_no) == int(recInvNo):
+                        print(row)
+                        if discount is None:
+                            discount=0
+                        if price is None:
+                            price=0
+                        if quantity is None:
+                            quantity=0
+                        if not Items.objects.filter(company = com, item_name = name).exists():
+                            print('No Item')
+                            incorrect_data.append(rec_no)
+                            continue
+                        try:
+                            itm = Items.objects.filter(company = com, item_name = name).first()
+                        except:
+                            pass
+
+                        debitnote_item.objects.create(company = com, login_details = com.login_details, debit_note = recInv, item = itm, hsn = hsn, quantity = quantity, price = price, tax_rate = tax_percentage, discount = discount, total = total)
+                        itm.current_stock -= int(quantity)
+                        itm.save()
+
+            if not incorrect_data and not existing_pattern:
+                messages.success(request, 'Data imported successfully.!')
+                return redirect(debitnote_list)
+            else:
+                if incorrect_data:
+                    messages.warning(request, f'Data with following SlNo could not import due to incorrect data provided -> {", ".join(str(item) for item in incorrect_data)}')
+                if existing_pattern:
+                    messages.warning(request, f'Data with following SlNo could not import due to DB No pattern exists already -> {", ".join(str(item) for item in existing_pattern)}')
+                return redirect(debitnote_list)
+        else:
+            return redirect(debitnote_list)
+    else:
+        return redirect('/')

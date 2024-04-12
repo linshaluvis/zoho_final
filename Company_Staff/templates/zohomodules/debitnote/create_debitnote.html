@@ -3,6 +3,8 @@
 {% load static %}
 
 <script src="//maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+
 <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
 <!-- <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" /> -->
 
@@ -453,6 +455,9 @@
                       <label for="" class="col-md-3 labels">Bill No.</label>
                       <div class="col-md-9">
                         <select  class="form-control" id="billSelect" name="billSelect">
+                            <option value="" selected>Select a bill</option>
+
+                            
                            
                       </select>
                       </div>
@@ -2864,7 +2869,7 @@
             console.log(inv_num);
             $.ajax({
                 type: "GET",
-                url: "{% url 'checkRecurringInvoiceNumber' %}",
+                url: "{% url 'checkdebitnoteNumber' %}",
                 data: {
                     RecInvNum : inv_num,
                 },
@@ -2898,6 +2903,7 @@
     
     function getItemDetails(inpId, value){
       var itm = value;
+      
       var exists = false;
       var plc = $('#placeOfSupply').val();
       var PLId = $('#priceListIds').val();
@@ -2952,7 +2958,7 @@
               alert('Select Place of Supply.!')
           }
       }else{
-          alert('Item already exists in the RECURRING INVOICE, choose another or change quantity.!')
+          alert('Item already exists in the Debit Note, choose another or change quantity.!')
       }
 
     }
@@ -3043,6 +3049,7 @@
     function splitTax(){
     var bc = $("#placeOfSupply").val();
     var compstate = $("#cmpstate").val();
+ 
     d=0
     if (bc == compstate  ) {
         var gst = taxamount/2
@@ -3072,6 +3079,7 @@
           }else{
           $(this).val(0);
           calc_total();
+          alert("ok")
           }
       }); 
     });
@@ -3317,7 +3325,7 @@
           $('#panMessage').text('PAN number is valid.').css('color', 'green');
           // PAN number is valid, call AJAX to check if it exists
           $.ajax({
-          url: "{% url 'customer_check_pan' %}",
+          url: "{% url 'check_pan' %}",
           headers: {'X-CSRFToken': csrftoken}, 
           type: 'POST',
           data: {panNumber: panNumber},
@@ -3351,7 +3359,7 @@
               $('#gstMessage').text('GST number is valid.').css('color', 'green');
               // GST number is valid, call AJAX to check if it exists
               $.ajax({
-                  url: "{% url 'customer_check_gst' %}",
+                  url: "{% url 'check_gst' %}",
                   headers: {'X-CSRFToken': csrftoken}, 
                   type: 'POST',
                   data: {gstNumber: gstNumber},
@@ -3790,7 +3798,7 @@ $('#vendor-email').on('input', function() {
   console.log(vendorEmail)
   $.ajax({
       type: 'GET',
-      url:'{% url "check_customer_email_exist" %}',
+      url:'{% url "check_email_exist" %}',
       data: {
           vendor_email: vendorEmail
       },
@@ -3816,7 +3824,7 @@ $('#workphone').on('input', function() {
   
   $.ajax({
       type: 'GET',
-      url:'{% url "check_customer_work_phone_exist" %}',
+      url:'{% url "check_work_phone_exist" %}',
       data: {
           w_Phone: wPhone
       },
@@ -3843,7 +3851,7 @@ $('#mphone').on('input', function() {
   
   $.ajax({
       type: 'GET',
-      url:'{% url "check_customer_phonenumber_exist" %}',
+      url:'{% url "check_phonenumber_exist" %}',
       data: {
           m_Phone: mPhone
       },
@@ -5668,7 +5676,6 @@ if (vals == "Other Expense") {
         
         if (billnumber != "") {
             console.log(billnumber);
-            alert(billnumber);
             $.ajax({
                 type: "GET",
                 url: "{% url 'get_bill_items' %}",
@@ -5700,8 +5707,18 @@ if (vals == "Other Expense") {
                             '<td><i class="fa fa-trash text-danger remove_row" style="cursor: pointer;" title="Remove Row" id="' + (index + 1) + '"></i></td>' +
                             '</tr>'
                         );
-                    }); refreshTax();
+                    });
+                    response.forEach(function(item, index) {
+                        getItemDetailsbill('item' + (index + 1), item.Items);
+                        refreshTax();
                     calc();
+                    applyPriceList();
+                    });
+                
+                    refreshTax();
+                    calc();
+                    
+                   
                 },
                 error: function(xhr, textStatus, errorThrown) {
                     console.log('Error fetching bill items: ' + errorThrown);
@@ -5709,12 +5726,19 @@ if (vals == "Other Expense") {
             });
         }applyPriceList();
     });
+
+   
+
+
+   
     
-    function getItemDetails(inpId, value){
+    function getItemDetailsbill(inpId, value){
       var itm = value;
       var exists = false;
       var plc = $('#placeOfSupply').val();
       var PLId = $('#priceListIds').val();
+
+   
 
       $('#items-table-body tr').each(function () {
           var html = $(this).html();
@@ -5729,47 +5753,49 @@ if (vals == "Other Expense") {
       });
       console.log('status',exists);
 
-      if(!exists){
+      if(exists){
           if(plc != ""){
               if($('#applyPriceList').prop('checked') && PLId ==""){
                   alert('Select a Price List from the dropdown..!')
               }else{
                   var n = inpId.slice(4);
                   $.ajax({
-                      url: "{% url 'getItemDetailsAjax' %}",
-                      type : 'GET',
-                      data:{
-                          item : value,
-                          listId : PLId,
-                          csrfmiddlewaretoken: '{{ csrf_token }}'
-                          },
-                      
-                      success: function(response) {
-                          if (response.status){
-                              $('#'+inpId).val(value);
-                              document.getElementById('itemId'+n).value = response.id;
-                              document.getElementById('hsn'+n).value = response.hsn;
-                              document.getElementById('qtyspan'+n).innerHTML = response.avl;
-                              document.getElementById('avl'+n).value = response.avl;
-                              document.getElementById('price'+n).value = response.sales_rate;
-                              document.getElementById('priceListPrice'+n).value = response.PLPrice;
-                              document.getElementById('taxGST'+n).value = response.gst;
-                              document.getElementById('taxIGST'+n).value = response.igst;
-                              refreshTax();
-                              calc();
-                          }
-                      },
-                  });
-              }
-              
-          }else{
-              alert('Select Place of Supply.!')
-          }
+                    url: "{% url 'getItemDetailsAjax' %}",
+                    type : 'GET',
+                    data:{
+                        item : value,
+                        listId : PLId,
+                        csrfmiddlewaretoken: '{{ csrf_token }}'
+                        },
+                    
+                    success: function(response) {
+                        if (response.status){
+                            $('#'+inpId).val(value);
+                            document.getElementById('itemId'+n).value = response.id;
+                            document.getElementById('hsn'+n).value = response.hsn;
+                            document.getElementById('qtyspan'+n).innerHTML = response.avl;
+                            document.getElementById('avl'+n).innerHTML = response.avl;
+                            document.getElementById('price'+n).value = response.sales_rate;
+                            document.getElementById('priceListPrice'+n).value = response.PLPrice;
+                            document.getElementById('taxGST'+n).value = response.gst;
+                            document.getElementById('taxIGST'+n).value = response.igst;
+                            refreshTax();
+                            calc();
+                        }
+                    },
+                });
+            }
+            
+        }else{
+            alert('Select Place of Supply.!')
+        }
       }else{
-          alert('Item already exists in the RECURRING INVOICE, choose another or change quantity.!')
+          alert('Item already exists in the Debit Note, choose another or change quantity.!')
       }
 
     } 
+
+    
 </script>
 
 {%endblock%}

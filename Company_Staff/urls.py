@@ -503,7 +503,14 @@ urlpatterns = [
     path('Company/sharedebitnoteeToEmail/<int:id>', views.sharedebitnoteeToEmail, name='sharedebitnoteeToEmail'),
     path('Company/editdebitnote/<int:id>',views.editdebitnote, name='editdebitnote'),
     path('Company/get_bill_items', views.get_bill_items, name='get_bill_items'),
-    path('Company/getItemDetaildebit_bill', views.getItemDetaildebit_bill, name='getItemDetaildebit_bill'),
+    path('Company/checkdebitnoteNumber',views.checkdebitnoteNumber, name='checkdebitnoteNumber'),
+    path('Compnay/updatedebitnote/<int:id>',views.updatedebitnote, name='updatedebitnote'),
+    path('Compnay/downloaddebitnoteSampleImportFile',views.downloaddebitnoteSampleImportFile, name='downloaddebitnoteSampleImportFile'),
+    path('Compnay/importdebitnoteFromExcel',views.importdebitnoteFromExcel, name='importdebitnoteFromExcel'),
+
+
+
+
 
 
 

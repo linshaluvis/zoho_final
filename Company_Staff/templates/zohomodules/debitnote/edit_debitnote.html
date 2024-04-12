@@ -252,7 +252,7 @@
             <div class="card mb-5 px-3 py-4" style="background-color: black; border-radius: 1vh;">
               <h1 class="mb-0 text-uppercase text-right" style="color: white; font-weight: bolder;">EDIT DEBIT NOTE</h1><br>
               <hr class="text-warning">
-              <form action="{% url 'updateRecurringInvoice' invoice.id %}" method="post" enctype="multipart/form-data"id="myForm" onsubmit="return validateForm()">
+              <form action="{% url 'updatedebitnote' invoice.id %}" method="post" enctype="multipart/form-data"id="myForm" onsubmit="return validateForm()">
                 {% csrf_token %}
                 <div class="row">
                   <div class="col-md-3">
@@ -448,15 +448,19 @@
                     <div class="row">
                       <label for="" class="col-md-3 labels">Bill No.</label>
                       <div class="col-md-9">
-                        <select  class="form-control" id="billSelect" name="billSelect">
-                           
-                                <option value="{{invoice.bill_no}}" text="{{invoice.bill_no}}" selected>{{invoice.bill_no}}</option>
-                               
-                        </select>                      </div>
+                        <input type="text" class="form-control bg-black text-white" name="bill_number" value="{{invoice.bill_no}}" readonly>
+
+                                             </div>
                     </div>
                   </div>
   
-                  {% comment %} <div class="col-md-6 mt-2">
+                  {% comment %}
+                  <select  class="form-control" id="billSelect" name="billSelect">
+                           
+                                <option value="{{invoice.bill_no}}" text="{{invoice.bill_no}}" selected>{{invoice.bill_no}}</option>
+                               
+                        </select> 
+                   <div class="col-md-6 mt-2">
                     <div class="row">
                       <label for="" class="col-md-3 labels">Terms</label>
                       <div class="col-md-9">
@@ -2995,7 +2999,7 @@
             console.log(inv_num);
             $.ajax({
                 type: "GET",
-                url: "{% url 'checkRecurringInvoiceNumber' %}",
+                url: "{% url 'checkdebitnoteNumber' %}",
                 data: {
                     RecInvNum : inv_num,
                 },
@@ -3083,7 +3087,7 @@
               alert('Select Place of Supply.!')
           }
       }else{
-          alert('Item already exists in the RECURRING INVOICE, choose another or change quantity.!')
+          alert('Item already exists in the Debit Note, choose another or change quantity.!')
       }
 
     }
@@ -3472,7 +3476,7 @@
           $('#panMessage').text('PAN number is valid.').css('color', 'green');
           // PAN number is valid, call AJAX to check if it exists
           $.ajax({
-          url: "{% url 'customer_check_pan' %}",
+          url: "{% url 'check_pan' %}",
           headers: {'X-CSRFToken': csrftoken}, 
           type: 'POST',
           data: {panNumber: panNumber},
@@ -3506,7 +3510,7 @@
               $('#gstMessage').text('GST number is valid.').css('color', 'green');
               // GST number is valid, call AJAX to check if it exists
               $.ajax({
-                  url: "{% url 'customer_check_gst' %}",
+                  url: "{% url 'check_gst' %}",
                   headers: {'X-CSRFToken': csrftoken}, 
                   type: 'POST',
                   data: {gstNumber: gstNumber},
@@ -3945,7 +3949,7 @@ $('#vendor-email').on('input', function() {
   console.log(vendorEmail)
   $.ajax({
       type: 'GET',
-      url:'{% url "check_customer_email_exist" %}',
+      url:'{% url "check_email_exist" %}',
       data: {
           vendor_email: vendorEmail
       },
@@ -3971,7 +3975,7 @@ $('#workphone').on('input', function() {
   
   $.ajax({
       type: 'GET',
-      url:'{% url "check_customer_work_phone_exist" %}',
+      url:'{% url "check_work_phone_exist" %}',
       data: {
           w_Phone: wPhone
       },
@@ -3998,7 +4002,7 @@ $('#mphone').on('input', function() {
   
   $.ajax({
       type: 'GET',
-      url:'{% url "check_customer_phonenumber_exist" %}',
+      url:'{% url "check_phonenumber_exist" %}',
       data: {
           m_Phone: mPhone
       },
