@@ -244,8 +244,8 @@
     <nav aria-label="breadcrumb">
       <ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="{% url 'company_dashboard' %}" class="text-warning-emphasis">Dashboard</a></li>
-        <li class="breadcrumb-item"><a class="text-warning-emphasis">Sales</a></li>
-        <li class="breadcrumb-item"><a href="" class="text-warning-emphasis">Debit Note</a></li>
+        <li class="breadcrumb-item"><a class="text-warning-emphasis">Purchase</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'debitnote_list' %}" class="text-warning-emphasis">Debit Note</a></li>
         <li class="breadcrumb-item" aria-current="page">Create</li>
       </ol>
     </nav>
@@ -728,7 +728,7 @@
                 <div class="mt-4">
                   <input type="submit" class="btn save_btn" style="background-color: chocolate; color: white;" value="SAVE" name="Saved" id="save">
                   <input class="btn save_btn" style="background-color: chocolate; color: white;" type="submit" value="DRAFT" name="Draft" id="draft">
-                  <input class="btn save_btn" style="background-color: chocolate; color: white;" type="reset" onclick="window.location.href=`{% url 'recurringInvoice' %}`" value="CANCEL" id="cancel">
+                  <input class="btn save_btn" style="background-color: chocolate; color: white;" type="reset" onclick="window.location.href=`{% url 'debitnote_list' %}`" value="CANCEL" id="cancel">
                 </div>
               </form>
             </div>
@@ -853,7 +853,7 @@
   <div class="modal-dialog modal-xl">
     <div class="modal-content" style="background: rgb(32, 35, 37);border-radius: 20px;">
       <div class="modal-header px-3" style="background: rgb(32, 35, 37);">
-          <h3 class="text-uppercase" style="color: white;">Add Customer</h3>
+          <h3 class="text-uppercase" style="color: white;">Add Vendor</h3>
           <button type="button" class="close btn btn-danger" data-dismiss="modal" aria-label="Close">
               <span aria-hidden="true">&times;</span>
           </button>
@@ -863,7 +863,7 @@
           <form id="newCustomerForm">
             {% csrf_token %}
             <div class="form-group row mt-3">
-              <label class="col-sm-12 col-md-3 col-lg-3 col-form-label" style="color: white;">Customer Type</label>
+              <label class="col-sm-12 col-md-3 col-lg-3 col-form-label" style="color: white;">Vendor Type</label>
               
               <div class=" col-sm-12 col-md-3 col-lg-3">
                   <input type="radio"  value="Business" name="type" >
@@ -897,7 +897,7 @@
               </div>
             </div>
             <div class="form-group row mt-4">
-              <div class="col-sm-12 col-md-3 col-lg-3 col-form-label"><label class="labels">Customer Display Name</label></div>
+              <div class="col-sm-12 col-md-3 col-lg-3 col-form-label"><label class="labels">Vendor Display Name</label></div>
               <div class="col-sm-12 col-md-6 col-lg-7">
                   <select class="form-control bg-light text-dark "  name="v_display_name" id="v_display_name">
                   </select> 
@@ -913,7 +913,7 @@
               </div>
           </div>
           <div class="form-group row mt-4">
-              <div class="col-sm-12 col-md-3 col-lg-3 col-form-label"><label class="labels">Customer Email*</label></div>
+              <div class="col-sm-12 col-md-3 col-lg-3 col-form-label"><label class="labels">Vendor Email*</label></div>
               <div class="col-sm-12 col-md-6 col-lg-7">
                   <input  type="email" class="form-control bg-light text-dark" name="vendor_email"  id="vendor-email"  required> 
                   <span class=" text-danger mt-1" id="email-message-id" style="font-size: 10px;"></span>   
@@ -922,7 +922,7 @@
 
           <div class="form-group row mt-4">
               <div class="col-sm-12 col-md-3 col-lg-3 ">
-                  <label class="col-form-label text-white">Customer phone*</label>
+                  <label class="col-form-label text-white">Vendor phone*</label>
               </div>
               <div class="col-sm-12 col-md-3 col-lg-3">
                   <input id="workphone"  type="text" class="form-control bg-light text-dark mt-2" pattern="[0-9]{7}"  name="w_phone" placeholder="work phone" required>
@@ -2564,20 +2564,17 @@
                   $('#applyPriceList').prop('checked') ? $('#applyPriceList').prop('checked', false) : $('#applyPriceList').prop('checked',false);
                   refreshTax();
                   checkPriceList();
+
+                  var selectDropdown = $('#billSelect');
+                  selectDropdown.empty();
+                  selectDropdown.append($('<option>').val('').text('Select a Bill'));
+  
                   var recbillData = data.recbill_data;
-
-                  var selectDropdown = document.getElementById("billSelect");
-
-
                   recbillData.forEach(function(bill) {
-                        var option = document.createElement("option");
-                        console.log(bill.bill_number)
-                        option.value = bill.bill_number;
-                        option.text = bill.bill_number;
-                        selectDropdown.add(option);
-                    });
-                  console.log("end")
-              }
+                      var option = $('<option>').val(bill.bill_number).text(bill.bill_number);
+                      selectDropdown.append(option);
+                  });
+              },
           });
       }else{
           document.getElementById('customerEmail').value = "";
@@ -3232,6 +3229,8 @@
     function validateForm() {
         var cust = $('#customer').val();
         var length = $("#items-table-body tr").length;
+        var paymentMethod = $('#paymentMethod').val();
+
 
         if(length < 1){
             alert('Add atleast 1 item..!')
@@ -3246,6 +3245,27 @@
         if($('#applyPriceList').prop('checked') && $('#priceListIds').val() == ""){
             alert('Choose a Price List or continue with standard price.')
             return false;
+        }
+        if (paymentMethod === 'Cheque') {
+            var chequeNo = $('#cheque_id').val();
+            if (chequeNo === '') {
+                alert('Please enter the Cheque No.');
+                return false;
+            }
+        } 
+         if (paymentMethod === 'UPI') {
+            var upiNo = $('#upi_id').val();
+            if (upiNo === '') {
+                alert('Please enter the UPI No.');
+                return false;
+            }
+        } 
+        if (paymentMethod !== 'Cash') {
+            var bankAccNo = $('#bnk_id').val();
+            if (bankAccNo === '') {
+                alert('Please enter the Bank Acc No.');
+                return false;
+            }
         }
     }
 </script>
@@ -4161,6 +4181,7 @@ $('#mphone').on('input', function() {
     $(document).on("click", "#newUnitSave", function(event) {
         event.preventDefault(); // Prevent the default form submission
         var uName = $("#unitName").val();
+        alert(uName)
         $.ajax({
           type: 'POST',
           url: "{% url 'add_unit' %}",

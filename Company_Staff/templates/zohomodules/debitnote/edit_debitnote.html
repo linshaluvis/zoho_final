@@ -243,7 +243,7 @@
       <ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="{% url 'company_dashboard' %}" class="text-warning-emphasis">Dashboard</a></li>
         <li class="breadcrumb-item"><a class="text-warning-emphasis">Sales</a></li>
-        <li class="breadcrumb-item"><a href="{% url 'recurringInvoice' %}" class="text-warning-emphasis">DEBIT NOTE</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'debitnote_list' %}" class="text-warning-emphasis">Debit Note</a></li>
         <li class="breadcrumb-item" aria-current="page">Edit</li>
       </ol>
     </nav>
@@ -790,7 +790,7 @@
                 </div>
                 <div class="mt-4">
                   <input type="submit" class="btn save_btn" style="background-color: chocolate; color: white;" value="SAVE" id="save">
-                  <input class="btn save_btn" style="background-color: chocolate; color: white;" type="reset" onclick="window.location.href=`{% url 'viewRecurringInvoice' invoice.id %}`" value="CANCEL" id="cancel">
+                  <input class="btn save_btn" style="background-color: chocolate; color: white;" type="reset" onclick="window.location.href=`{% url 'view_debitnote' invoice.id %}`" value="CANCEL" id="cancel">
                 </div>
               </form>
             </div>
@@ -2643,6 +2643,7 @@
         }
         // $('#placeOfSupply').val('{{invoice.place_of_supply}}')
     })
+    
 
     function filterCustomers(){
         var options = $('#cust_drop').children();
@@ -3383,6 +3384,8 @@
     function validateForm() {
         var cust = $('#customer').val();
         var length = $("#items-table-body tr").length;
+        var paymentMethod = $('#paymentMethod').val();
+
 
         if(length < 1){
             alert('Add atleast 1 item..!')
@@ -3397,6 +3400,27 @@
         if($('#applyPriceList').prop('checked') && $('#priceListIds').val() == ""){
             alert('Choose a Price List or continue with standard price.')
             return false;
+        }
+        if (paymentMethod === 'Cheque') {
+            var chequeNo = $('#cheque_id').val();
+            if (chequeNo === '') {
+                alert('Please enter the Cheque No.');
+                return false;
+            }
+        } 
+         if (paymentMethod === 'UPI') {
+            var upiNo = $('#upi_id').val();
+            if (upiNo === '') {
+                alert('Please enter the UPI No.');
+                return false;
+            }
+        } 
+        if (paymentMethod !== 'Cash') {
+            var bankAccNo = $('#bnk_id').val();
+            if (bankAccNo === '') {
+                alert('Please enter the Bank Acc No.');
+                return false;
+            }
         }
     }
 </script>

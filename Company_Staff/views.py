@@ -19456,6 +19456,7 @@ def getUnitsAjax(request):
 
             options = {}
             option_objects = Unit.objects.filter(company=com)
+            print("ok")
             for option in option_objects:
                 options[option.id] = [option.id,option.unit_name]
             return JsonResponse(options)
@@ -20359,7 +20360,7 @@ def adddebit_note(request):
         trm = Company_Payment_Term.objects.filter(company = cmp)
         repeat = CompanyRepeatEvery.objects.filter(company = cmp)
         bnk = Banking.objects.filter(company = cmp)
-        priceList = PriceList.objects.filter(company = cmp, type = 'Sales', status = 'Active')
+        priceList = PriceList.objects.filter(company = cmp, type = 'Purchase', status = 'Active')
         itms = Items.objects.filter(company = cmp, activation_tag = 'active')
         units = Unit.objects.filter(company=cmp)
         accounts=Chart_of_Accounts.objects.filter(company=cmp)
